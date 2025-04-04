@@ -33,6 +33,14 @@ const upload = multer({
 app.use(cors());
 app.use(express.json());
 
+app.use(
+  cors({
+    origin: "https://famous-gumdrop-d6b441.netlify.app",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
+
 // Interview session store (in-memory, replace with DB in production)
 const sessions = new Map();
 
@@ -186,7 +194,7 @@ app.post("/start-interview", express.json(), async (req, res) => {
 });
 
 // Generate Questions
-app.post('/api/generate-questions', express.json(), async (req, res) => {
+app.post('/generate-questions', express.json(), async (req, res) => {
   try {
     const { position, keywords, numQuestions = 5 } = req.body;
 
@@ -238,7 +246,7 @@ app.post("/evaluate-answer", express.json(), async (req, res) => {
     const prompt = await evaluationPrompt.format({
       question: currentQuestion,
       answer: answer,
-      format_instructions: formatInstructions
+      format_instructions: formatInstructions,
     });
 
     const result = await mistralModel.invoke(prompt);
@@ -254,7 +262,7 @@ app.post("/evaluate-answer", express.json(), async (req, res) => {
     const response = {
       success: true,
       evaluation: evaluationData,
-      isComplete: !shouldContinue
+      isComplete: !shouldContinue,
     };
 
     if (shouldContinue) {
@@ -264,19 +272,12 @@ app.post("/evaluate-answer", express.json(), async (req, res) => {
       response.summary = session.answers;
     }
 
+    console.log("Evaluation Response:", response); // Debug log
     res.json(response);
   } catch (error) {
     console.error("Evaluation Error:", error);
-    // Fallback response
-    res.json({
-      success: true,
-      evaluation: {
-        score: 2,
-        rating: "Fair",
-        feedback: "The answer showed basic understanding but needs improvement",
-        followUp: "Can you explain this concept in more detail?"
-      },
-      isComplete: false
+    res.status(500).json({
+      error: "Failed to evaluate answer",
     });
   }
 });
